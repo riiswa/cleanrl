@@ -13,6 +13,7 @@ import torch.optim as optim
 import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import trange
 
 
 @dataclass
@@ -43,31 +44,31 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "CartPole-v1"
     """the id of the environment"""
-    total_timesteps: int = 500000
+    total_timesteps: int = 5000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
     num_envs: int = 1
     """the number of parallel game environments"""
-    buffer_size: int = 10000
+    buffer_size: int = 100000
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
     tau: float = 1.0
     """the target network update rate"""
-    target_network_frequency: int = 500
+    target_network_frequency: int = 1000
     """the timesteps it takes to update the target network"""
-    batch_size: int = 128
+    batch_size: int = 32
     """the batch size of sample from the reply memory"""
     start_e: float = 1
     """the starting epsilon for exploration"""
-    end_e: float = 0.05
+    end_e: float = 0.1
     """the ending epsilon for exploration"""
-    exploration_fraction: float = 0.5
+    exploration_fraction: float = 0.2
     """the fraction of `total-timesteps` it takes from start-e to go end-e"""
-    learning_starts: int = 10000
+    learning_starts: int = 5000
     """timestep to start learning"""
-    train_frequency: int = 10
+    train_frequency: int = 1
     """the frequency of training"""
 
 
@@ -86,20 +87,25 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     return thunk
 
 
-# ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     def __init__(self, env):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(np.array(env.single_observation_space.shape).prod(), 120),
-            nn.ReLU(),
-            nn.Linear(120, 84),
-            nn.ReLU(),
-            nn.Linear(84, env.single_action_space.n),
+        super(QNetwork, self).__init__()
+        self.conv = nn.Conv2d(
+            in_channels=env.single_observation_space.shape[2],
+            out_channels=16,
+            kernel_size=3,
+            stride=1
         )
+        linear_input_size = self.conv(torch.from_numpy(env.single_observation_space.sample()).permute(2, 0, 1).float()).numel()
+        self.fc1 = nn.Linear(in_features=linear_input_size, out_features=128)
+        self.fc2 = nn.Linear(in_features=128, out_features=env.single_action_space.n)
 
     def forward(self, x):
-        return self.network(x)
+        x = x.permute(0, 3, 1, 2).float()
+        x = F.relu(self.conv(x))
+        x = F.relu(self.fc1(x.flatten(1)))
+        x = self.fc2(x)
+        return x
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -120,6 +126,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    file_name = f"{args.env_id}/{args.exp_name}/seed-{args.seed}.csv"
+
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    with open(file_name, 'w') as f:
+        f.write("step,episodic_return\n")
+
     if args.track:
         import wandb
 
@@ -166,9 +178,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     )
     start_time = time.time()
 
+    episode = 0
+
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
-    for global_step in range(args.total_timesteps):
+    for global_step in trange(args.total_timesteps, position=args.seed, desc=run_name):
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
         if random.random() < epsilon:
@@ -184,7 +198,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if "final_info" in infos:
             for info in infos["final_info"]:
                 if info and "episode" in info:
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    with open(file_name, 'a') as f:
+                        f.write(f"{global_step},{info['episode']['r'][0]}\n")
                     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
@@ -211,7 +226,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 if global_step % 100 == 0:
                     writer.add_scalar("losses/td_loss", loss, global_step)
                     writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
-                    print("SPS:", int(global_step / (time.time() - start_time)))
+                    #print("SPS:", int(global_step / (time.time() - start_time)))
                     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
                 # optimize the model
