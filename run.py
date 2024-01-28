@@ -8,8 +8,6 @@ def run(seed, skeleton: bool = False):
     # Replace 'your_program.py' with the name of the Python program you want to run
     program_command = [
         'CUDA_VISIBLE_DEVICES=0' if not skeleton else 'CUDA_VISIBLE_DEVICES=1',
-        'poetry',
-        'run',
         'python',
         'cleanrl/dqn.py' if not skeleton else 'cleanrl/skeleton_dqn.py',
         '--seed' f'{seed}',
