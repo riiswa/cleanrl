@@ -8,4 +8,4 @@
 #SBATCH --error=job-%A.err
 #SBATCH --output=job-%A.out
 
-python run.py "MinAtar/$1-v1"
+python run.py "MinAtar/$1-v0"
