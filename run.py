@@ -26,7 +26,7 @@ def run(seed, skeleton: bool = False):
 
 if __name__ == "__main__":
     # Define the range of seeds
-    seeds = range(16)
+    seeds = range(4)
 
     # Create a multiprocessing pool with the number of desired processes
     # You can adjust the number of processes based on your system's capabilities
