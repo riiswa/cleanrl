@@ -10,7 +10,8 @@ def run(seed, skeleton: bool = False):
     program_command = [
         'python',
         'cleanrl/dqn.py' if not skeleton else 'cleanrl/skeleton_dqn.py',
-        '--seed' f'{seed}',
+        '--seed',
+        f'{seed}',
         '--env-id',
         sys.argv[1]
     ]
