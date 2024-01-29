@@ -1,5 +1,6 @@
 import functools
 import multiprocessing
+import os
 import subprocess
 import sys
 
@@ -7,7 +8,6 @@ import sys
 def run(seed, skeleton: bool = False):
     # Replace 'your_program.py' with the name of the Python program you want to run
     program_command = [
-        'CUDA_VISIBLE_DEVICES=0' if not skeleton else 'CUDA_VISIBLE_DEVICES=1',
         'python',
         'cleanrl/dqn.py' if not skeleton else 'cleanrl/skeleton_dqn.py',
         '--seed' f'{seed}',
@@ -15,8 +15,12 @@ def run(seed, skeleton: bool = False):
         sys.argv[1]
     ]
 
+    my_env = os.environ.copy()
+    my_env["CUDA_VISIBLE_DEVICES"] = "0" if not skeleton else "1"
+
+
     # Run the program using subprocess
-    subprocess.run(program_command)
+    subprocess.run(program_command, env=my_env)
 
 
 if __name__ == "__main__":
