@@ -26,11 +26,11 @@ def run(seed, skeleton: bool = False):
 
 if __name__ == "__main__":
     # Define the range of seeds
-    seeds = range(4)
+    seeds = range(8)
 
     # Create a multiprocessing pool with the number of desired processes
     # You can adjust the number of processes based on your system's capabilities
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
         # Use the pool.map function to distribute the seeds among the processes
-        pool.map(functools.partial(run, skeleton=False), seeds)
-        pool.map(functools.partial(run, skeleton=True), seeds)
+        pool.map_async(functools.partial(run, skeleton=False), seeds)
+        pool.map_async(functools.partial(run, skeleton=True), seeds)
