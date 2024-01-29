@@ -2,7 +2,7 @@
 
 #SBATCH --exclusive
 #SBATCH --nodes=1
-#SBATCH --constraint=[v100|a100|p100]
+#SBATCH --constraint=[v100|p100]
 #SBATCH --tasks-per-node=1
 #SBATCH --time 8:00:00
 #SBATCH --error=job-%A.err
